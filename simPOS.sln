@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36212.18
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "simPOS.Shared", "simPOS.Shared\simPOS.Shared.csproj", "{F82B6E81-7BC1-4CC8-B573-D78108916F42}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "simPOS.Management", "simPOS.Management\simPOS.Management.csproj", "{927903B2-6D88-49F9-B2F3-3034397BFDC0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "simPOS.POS", "simPOS.POS\simPOS.POS.csproj", "{76862015-4332-426A-B337-03C45BC32210}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F82B6E81-7BC1-4CC8-B573-D78108916F42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F82B6E81-7BC1-4CC8-B573-D78108916F42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F82B6E81-7BC1-4CC8-B573-D78108916F42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F82B6E81-7BC1-4CC8-B573-D78108916F42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{927903B2-6D88-49F9-B2F3-3034397BFDC0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{927903B2-6D88-49F9-B2F3-3034397BFDC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{927903B2-6D88-49F9-B2F3-3034397BFDC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{927903B2-6D88-49F9-B2F3-3034397BFDC0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76862015-4332-426A-B337-03C45BC32210}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76862015-4332-426A-B337-03C45BC32210}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76862015-4332-426A-B337-03C45BC32210}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76862015-4332-426A-B337-03C45BC32210}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {20DBFA34-F5D5-4A0D-A0CD-E19FA6E6919C}
+	EndGlobalSection
+EndGlobal

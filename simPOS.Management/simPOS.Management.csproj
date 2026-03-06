@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WinForms.DataVisualization" Version="1.10.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\simPOS.Shared\simPOS.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Database\schema.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="System.Windows.Forms.DataVisualization" />
+	</ItemGroup>
+
+</Project>
