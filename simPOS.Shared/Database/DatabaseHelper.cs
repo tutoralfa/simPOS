@@ -106,6 +106,8 @@ namespace simPOS.Shared.Database
                     total_laba   REAL    NOT NULL DEFAULT 0
                 )");
 
+            AddColumnIfNotExists(conn, "products", "barcode", "TEXT NOT NULL DEFAULT ''");
+
             AddColumnIfNotExists(conn, "stock_movements", "receipt_id",
                 "INTEGER REFERENCES goods_receipts(id) ON DELETE SET NULL");
 

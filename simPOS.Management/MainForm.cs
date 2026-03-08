@@ -25,10 +25,10 @@ namespace simPOS.Management
         private Button btnPenerimaan;
         private Button btnStokOpname;
         private Button btnSettings;
-        private Button btnDbManager;
         private Button btnLaporan;
         private Button btnLabaRugi;
         private Button btnDashboard;
+        private Button btnCetakLabel;
         private Button btnEod;
         private Button btnKasir;
 
@@ -110,6 +110,7 @@ namespace simPOS.Management
             btnLaporan = CreateMenuButton("📊  Laporan", () => OpenPage(new FormLaporan(), btnLaporan));
             btnLabaRugi = CreateMenuButton("💰  Laba / Rugi", () => OpenPage(new FormProfitLoss(), btnLabaRugi));
             btnEod = CreateMenuButton("📋  EOD", () => OpenEod());
+            btnCetakLabel = CreateMenuButton("🏷  Cetak Label", () => OpenPage(new simPOS.Management.Forms.Products.FormPrintLabel(), btnCetakLabel));
 
             var sepLaporan = new Label
             {
@@ -135,6 +136,7 @@ namespace simPOS.Management
             pnlMenu.Controls.Add(lblMenuHeader);
             pnlMenu.Controls.Add(sepLaporan);
             pnlMenu.Controls.Add(btnEod);
+            pnlMenu.Controls.Add(btnCetakLabel);
             pnlMenu.Controls.Add(btnLabaRugi);
             pnlMenu.Controls.Add(btnLaporan);
             pnlMenu.Controls.Add(btnDashboard);
@@ -143,30 +145,9 @@ namespace simPOS.Management
             pnlMenu.Controls.Add(lblLogo);
 
             // Tombol pengaturan di paling bawah sidebar
-            btnDbManager = new Button
-            {
-                Text = "🗄  Database",
-                Dock = DockStyle.Bottom,
-                Height = 42,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(36, 50, 65),
-                ForeColor = Color.FromArgb(149, 165, 166),
-                Font = new Font("Segoe UI", 9f),
-                Cursor = Cursors.Hand
-            };
-            btnDbManager.FlatAppearance.BorderSize = 0;
-            btnDbManager.FlatAppearance.MouseOverBackColor = Color.FromArgb(52, 73, 94);
-            //btnDbManager.FlatAppearance.MouseOverForeColor = Color.White;
-            btnDbManager.Click += (s, e) =>
-            {
-                var form = new FormDatabaseManager();
-                form.ShowDialog(this);
-            };
-            pnlMenu.Controls.Add(btnDbManager);
-
             btnSettings = new Button
             {
-                Text = "⚙  Pengaturan Printer",
+                Text = "⚙  Pengaturan",
                 Dock = DockStyle.Bottom,
                 Height = 42,
                 FlatStyle = FlatStyle.Flat,
@@ -180,7 +161,7 @@ namespace simPOS.Management
             //btnSettings.FlatAppearance.MouseOverForeColor = Color.White;
             btnSettings.Click += (s, e) =>
             {
-                var form = new FormPrinterSettings();
+                var form = new FormSettings();
                 form.ShowDialog(this);
             };
             pnlMenu.Controls.Add(btnSettings);
@@ -285,7 +266,8 @@ namespace simPOS.Management
             if (!System.IO.File.Exists(posExe))
             {
                 MessageBox.Show(
-                    $"File simPOS.POS.exe tidak ditemukan.Pastikan file berada di folder yang sama:{ exeDir}","POS Tidak Ditemukan",
+                    $"File simPOS.POS.exe tidak ditemukan. Pastikan file berada di folder yang sama:{ exeDir}                ",
+                    "POS Tidak Ditemukan",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
                 return;
@@ -326,8 +308,7 @@ namespace simPOS.Management
             if (clerk.IsSessionOpen())
             {
                 MessageBox.Show(
-                    "Kasir di aplikasi POS masih BUKA." +
-                    "Minta kasir tutup sesi (tekan F9 di POS) sebelum EOD bisa dilakukan.",
+                    "Kasir di aplikasi POS masih BUKA." +  "Minta kasir tutup sesi (tekan F9 di POS) sebelum EOD bisa dilakukan.",
                     "EOD Tidak Bisa Dilakukan",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);

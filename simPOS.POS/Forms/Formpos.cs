@@ -116,60 +116,109 @@ namespace simPOS.POS.Forms
 
         private Panel BuildFooterPanel()
         {
+            // ── [DIUBAH] Footer lebih tinggi untuk tombol 3 baris ────
             var pnl = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 52,
+                Height = 82,                                // [DIUBAH] 60 → 82
                 BackColor = Color.White,
-                Padding = new Padding(10, 8, 10, 8)
+                Padding = new Padding(10, 9, 10, 9)
             };
-            // Garis atas pemisah
             pnl.Paint += (s, e) => e.Graphics.DrawLine(
                 new Pen(Color.FromArgb(218, 220, 224)), 0, 0, pnl.Width, 0);
 
-            // Helper buat tombol kotak abu muda seragam
-            Button MakeFooterBtn(string text, EventHandler onClick)
+            // ── [BARU] Tombol kotak 80×64, teks 3 baris via custom Paint
+            //    Baris 1 = icon besar, Baris 2 = label, Baris 3 = F-key
+            Button MakeFooterBtn(string icon, string label, string fkey,
+                                 EventHandler onClick,
+                                 Color? bg = null, Color? fg = null)
             {
                 var btn = new Button
                 {
-                    Text = text,
-                    Width = 150,
-                    Height = 36,
+                    Width = 80,                            // [DIUBAH] 52 → 80
+                    Height = 64,                            // [DIUBAH] 44 → 64
                     FlatStyle = FlatStyle.Flat,
-                    BackColor = Color.FromArgb(236, 240, 241),
-                    ForeColor = Color.FromArgb(60, 60, 60),
-                    Font = new Font("Segoe UI", 8.5f),
+                    BackColor = bg ?? Color.FromArgb(236, 240, 241),
+                    ForeColor = fg ?? Color.FromArgb(60, 60, 60),
                     Cursor = Cursors.Hand,
-                    TextAlign = ContentAlignment.MiddleCenter
+                    Text = "",
+                    Tag = (icon, label, fkey)
                 };
                 btn.FlatAppearance.BorderColor = Color.FromArgb(200, 205, 210);
                 btn.FlatAppearance.BorderSize = 1;
-                btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(220, 225, 228);
+                btn.FlatAppearance.MouseOverBackColor =
+                    bg.HasValue ? ControlPaint.Light(bg.Value, 0.08f) : Color.FromArgb(220, 225, 228);
                 btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(205, 210, 215);
                 btn.Click += onClick;
+
+                // Gambar 3 baris manual agar tiap baris bisa beda ukuran font
+                btn.Paint += (s, e) =>
+                {
+                    var b = s as Button;
+                    var tp = ((string, string, string))b.Tag;
+                    var g = e.Graphics;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                    Color fc = b.ForeColor;
+                    Color fcDim = Color.FromArgb(140, fc.R, fc.G, fc.B);
+                    float w = b.ClientSize.Width;
+                    var sfC = new StringFormat
+                    {
+                        Alignment = StringAlignment.Center,
+                        Trimming = StringTrimming.EllipsisCharacter,
+                        LineAlignment = StringAlignment.Center
+                    };
+
+                    float y = 5f;
+                    using (var f = new Font("Segoe UI Emoji", 14f))
+                    {
+                        float h = f.GetHeight(g);
+                        g.DrawString(tp.Item1, f, new SolidBrush(fc),
+                            new RectangleF(0, y, w, h), sfC);
+                        y += h + 1f;
+                    }
+                    using (var f = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+                    {
+                        float h = f.GetHeight(g);
+                        g.DrawString(tp.Item2, f, new SolidBrush(fc),
+                            new RectangleF(0, y, w, h), sfC);
+                        y += h + 1f;
+                    }
+                    using (var f = new Font("Segoe UI", 7f))
+                    {
+                        float h = f.GetHeight(g);
+                        g.DrawString(tp.Item3, f, new SolidBrush(fcDim),
+                            new RectangleF(0, y, w, h), sfC);
+                    }
+                };
                 return btn;
             }
 
-            // Tombol berurutan dari kiri — tambah tombol baru di sini
-            var btnCariBarang = MakeFooterBtn("🔍  Cari Barang  [F2]",
+            Panel Gap() => new Panel { Width = 8, Height = 64, BackColor = Color.Transparent };
+
+            // ── [DIUBAH] Definisi tombol dengan label keterangan ─────
+            var btnCariBarang = MakeFooterBtn("🔍", "Cari Barang", "F2",
                 (s, e) => ShowAllProductPickerPopup());
 
-            var btnTutupKasir = MakeFooterBtn("🔒  Tutup Kasir  [F9]",
+            var btnReprint = MakeFooterBtn("🖨", "Reprint Struk", "F3",
+                (s, e) => ShowReprint());
+
+            var btnRiwayat = MakeFooterBtn("📋", "Riwayat", "F4",
+                (s, e) => ShowRiwayat());
+
+            _btnPending = MakeFooterBtn("⏸", "Pending", "F8",
+                (s, e) => TogglePending());
+
+            var btnTutupKasir = MakeFooterBtn("🔒", "Tutup Kasir", "F9",
                 (s, e) =>
                 {
-                    if (_clerk.IsSessionOpen())
-                        ShowClerkForm();
-                    else
-                        MessageBox.Show("Kasir sudah ditutup.", "Info",
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
-                });
-            // Beri warna merah muda sedikit agar mudah dibedakan
-            btnTutupKasir.BackColor = Color.FromArgb(253, 234, 234);
-            btnTutupKasir.ForeColor = Color.FromArgb(150, 40, 40);
-            btnTutupKasir.FlatAppearance.BorderColor = Color.FromArgb(240, 200, 200);
-            btnTutupKasir.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 215, 215);
+                    if (_clerk.IsSessionOpen()) ShowClerkForm();
+                    else MessageBox.Show("Kasir sudah ditutup.", "Info",
+                             MessageBoxButtons.OK, MessageBoxIcon.Information);
+                },
+                bg: Color.FromArgb(253, 234, 234),
+                fg: Color.FromArgb(150, 40, 40));
 
-            // FlowLayoutPanel agar tombol otomatis berjejer kiri ke kanan
             var flow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -179,19 +228,14 @@ namespace simPOS.POS.Forms
                 Padding = new Padding(0)
             };
 
-            // Tombol Reprint [F3]
-            var btnReprint = MakeFooterBtn("🖨  Reprint  [F3]", (s, e) => ShowReprint());
-
-            // Tombol Pending [F8]
-            _btnPending = MakeFooterBtn("⏸  Pending  [F8]", (s, e) => TogglePending());
-            _btnPending.Width = 155;
-
             flow.Controls.Add(btnCariBarang);
-            flow.Controls.Add(new Panel { Width = 6, Height = 36, BackColor = Color.Transparent });
+            flow.Controls.Add(Gap());
             flow.Controls.Add(btnReprint);
-            flow.Controls.Add(new Panel { Width = 6, Height = 36, BackColor = Color.Transparent });
+            flow.Controls.Add(Gap());
+            flow.Controls.Add(btnRiwayat);
+            flow.Controls.Add(Gap());
             flow.Controls.Add(_btnPending);
-            flow.Controls.Add(new Panel { Width = 6, Height = 36, BackColor = Color.Transparent });
+            flow.Controls.Add(Gap());
             flow.Controls.Add(btnTutupKasir);
 
             pnl.Controls.Add(flow);
@@ -978,6 +1022,10 @@ namespace simPOS.POS.Forms
                     ShowReprint();
                     break;
 
+                case Keys.F4:
+                    ShowRiwayat();
+                    break;
+
                 case Keys.F8:
                     TogglePending();
                     break;
@@ -1043,7 +1091,9 @@ namespace simPOS.POS.Forms
 
             if (payment.ShowDialog(this) == DialogResult.OK && payment.Confirmed)
             {
-                // Transaksi berhasil — reset POS untuk pelanggan berikutnya
+                // Transaksi berhasil — simpan invoice terakhir untuk reprint
+                if (payment.ResultTrx != null)
+                    _lastInvoiceNo = payment.ResultTrx.InvoiceNo;
                 _cart.Clear();
                 SetKeypadMode(null);
                 RefreshCart();
@@ -1107,6 +1157,16 @@ namespace simPOS.POS.Forms
         }
 
         // ════════════════════════════════════════════════════════════════
+        // RIWAYAT PENJUALAN  [F4]
+        // ════════════════════════════════════════════════════════════════
+
+        private void ShowRiwayat()
+        {
+            var form = new FormRiwayat();
+            form.ShowDialog(this);
+        }
+
+        // ════════════════════════════════════════════════════════════════
         // REPRINT STRUK  [F3]
         // ════════════════════════════════════════════════════════════════
 
@@ -1156,11 +1216,13 @@ namespace simPOS.POS.Forms
                 _selectedItem = null;
                 RefreshCart();
 
-                // Update tombol — tampilkan indikator pending aktif
-                _btnPending.Text = "▶  Unpending  [F8]";
-                _btnPending.BackColor = Color.FromArgb(255, 243, 205);   // kuning muda
+                // [DIUBAH] Update Tag tuple + warna kuning saat pending aktif
+                _btnPending.Tag = ("▶", "Unpending", "F8");
+                _btnPending.BackColor = Color.FromArgb(255, 243, 205);
                 _btnPending.ForeColor = Color.FromArgb(133, 100, 4);
                 _btnPending.FlatAppearance.BorderColor = Color.FromArgb(240, 200, 80);
+                _btnPending.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 235, 150);
+                _btnPending.Invalidate();
 
                 ShowToast("✅ Transaksi di-pending. Keranjang dikosongkan.");
             }
@@ -1169,7 +1231,8 @@ namespace simPOS.POS.Forms
                 // ── UNPENDING ─────────────────────────────────────────
                 if (_cart.Count > 0)
                 {
-                    MessageBox.Show(                        "Keranjang belanja masih berisi item." +                        "Selesaikan atau kosongkan transaksi aktif terlebih dahulu sebelum mengambil kembali transaksi pending.",
+                    MessageBox.Show(
+                        "Keranjang belanja masih berisi item." +  "Selesaikan atau kosongkan transaksi aktif terlebih dahulu sebelum mengambil kembali transaksi pending.",
                         "Unpending Ditolak", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
@@ -1183,11 +1246,13 @@ namespace simPOS.POS.Forms
                 _selectedItem = null;
                 RefreshCart();
 
-                // Kembalikan tampilan tombol ke normal
-                _btnPending.Text = "⏸  Pending  [F8]";
+                // [DIUBAH] Kembalikan Tag + warna ke normal
+                _btnPending.Tag = ("⏸", "Pending", "F8");
                 _btnPending.BackColor = Color.FromArgb(236, 240, 241);
                 _btnPending.ForeColor = Color.FromArgb(60, 60, 60);
                 _btnPending.FlatAppearance.BorderColor = Color.FromArgb(200, 205, 210);
+                _btnPending.FlatAppearance.MouseOverBackColor = Color.FromArgb(220, 225, 228);
+                _btnPending.Invalidate();
 
                 ShowToast("↩ Transaksi pending dikembalikan ke keranjang.");
             }
