@@ -18,6 +18,9 @@ namespace simPOS.POS.Forms
         private readonly ClerkService _clerk = new ClerkService();
         private readonly TransactionService _service = new TransactionService();
         private readonly List<TransactionItem> _cart = new List<TransactionItem>();
+        private List<TransactionItem> _pendingCart = null; // null = tidak ada pending
+        private string _lastInvoiceNo = "";    // untuk reprint F3
+        private Button _btnPending;         // ref untuk update teks
 
         // ── Mode keypad ──────────────────────────────────────────────────
         // null  = mode barcode (input ke txtBarcode)
@@ -36,7 +39,6 @@ namespace simPOS.POS.Forms
         private Label lblTotal;
         private Button btnBayar;
         private Button btnVoid;
-        private Button btnMenuClerk;
 
         // ══════════════════════════════════════════════════════════════════
         // INIT
@@ -59,11 +61,10 @@ namespace simPOS.POS.Forms
             this.BackColor = Color.FromArgb(236, 240, 241);
             this.KeyPreview = true;
             this.KeyDown += FormPOS_KeyDown;
-            EnsureAndCheckSession();
+            this.Load += (s, e) => EnsureAndCheckSession();
 
-            BuildBody();
             BuildHeader();
-            
+            BuildBody();
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -92,63 +93,109 @@ namespace simPOS.POS.Forms
         private void BuildBody()
         {
             // ⚠ Fill dulu, Right belakangan
-            var body = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
+            // ── Panel tombol bawah — full lebar layar ─────────────
+            var pnlFooter = BuildFooterPanel();
+
+            var body = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 12, 12, 0) };
 
             var pnlRight = new Panel { Dock = DockStyle.Right, Width = 320, Padding = new Padding(8, 0, 0, 0) };
             var pnlLeft = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 8, 0) };
-            var pnlButtom = new Panel { Dock = DockStyle.Bottom, Height = 72, Padding = new Padding(10) };
+
             BuildRightPanel(pnlRight);
             BuildLeftPanel(pnlLeft);
-            BuildBottomPanel(pnlButtom);
 
             body.Controls.Add(pnlLeft);
             body.Controls.Add(pnlRight);
-            body.Controls.Add(pnlButtom);
+
+            // ⚠ Footer Bottom dulu, body Fill belakangan
             this.Controls.Add(body);
+            this.Controls.Add(pnlFooter);
         }
 
-        //---panel bawah--
+        // ── Panel Footer (tombol bawah, full lebar) ──────────────────────
 
-        private void BuildBottomPanel(Panel parent)
+        private Panel BuildFooterPanel()
         {
-            var pnlMenuButton = new Panel
+            var pnl = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 76,
+                Height = 52,
                 BackColor = Color.White,
-                Padding = new Padding(12, 8, 12, 8)
+                Padding = new Padding(10, 8, 10, 8)
             };
-            pnlMenuButton.Paint += PaintCardBorder;
+            // Garis atas pemisah
+            pnl.Paint += (s, e) => e.Graphics.DrawLine(
+                new Pen(Color.FromArgb(218, 220, 224)), 0, 0, pnl.Width, 0);
 
-
-            var lblMenuTitle = new Label
+            // Helper buat tombol kotak abu muda seragam
+            Button MakeFooterBtn(string text, EventHandler onClick)
             {
-                Text = "Menu",
-                Dock = DockStyle.Top,
-                Height = 20,
-                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(100, 100, 100)
-            };
+                var btn = new Button
+                {
+                    Text = text,
+                    Width = 150,
+                    Height = 36,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(236, 240, 241),
+                    ForeColor = Color.FromArgb(60, 60, 60),
+                    Font = new Font("Segoe UI", 8.5f),
+                    Cursor = Cursors.Hand,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                btn.FlatAppearance.BorderColor = Color.FromArgb(200, 205, 210);
+                btn.FlatAppearance.BorderSize = 1;
+                btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(220, 225, 228);
+                btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(205, 210, 215);
+                btn.Click += onClick;
+                return btn;
+            }
 
-            btnMenuClerk = new Button
+            // Tombol berurutan dari kiri — tambah tombol baru di sini
+            var btnCariBarang = MakeFooterBtn("🔍  Cari Barang  [F2]",
+                (s, e) => ShowAllProductPickerPopup());
+
+            var btnTutupKasir = MakeFooterBtn("🔒  Tutup Kasir  [F9]",
+                (s, e) =>
+                {
+                    if (_clerk.IsSessionOpen())
+                        ShowClerkForm();
+                    else
+                        MessageBox.Show("Kasir sudah ditutup.", "Info",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                });
+            // Beri warna merah muda sedikit agar mudah dibedakan
+            btnTutupKasir.BackColor = Color.FromArgb(253, 234, 234);
+            btnTutupKasir.ForeColor = Color.FromArgb(150, 40, 40);
+            btnTutupKasir.FlatAppearance.BorderColor = Color.FromArgb(240, 200, 200);
+            btnTutupKasir.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 215, 215);
+
+            // FlowLayoutPanel agar tombol otomatis berjejer kiri ke kanan
+            var flow = new FlowLayoutPanel
             {
-                Text = "F9 Clerk",
-                Width = 42,
-                Height = 42,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(149, 165, 166),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9f),
-                Cursor = Cursors.Hand,
-                Location = new Point(0, 5)
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.Transparent,
+                Padding = new Padding(0)
             };
-            btnMenuClerk.FlatAppearance.BorderSize = 0;
-            btnMenuClerk.Click += BtnMenuClerk_Click;
 
-            pnlMenuButton.Controls.Add(lblMenuTitle);
-            pnlMenuButton.Controls.Add(btnMenuClerk);
+            // Tombol Reprint [F3]
+            var btnReprint = MakeFooterBtn("🖨  Reprint  [F3]", (s, e) => ShowReprint());
 
-            var spacer = new Panel { Dock = DockStyle.Top, Height = 8, BackColor = Color.Transparent };
+            // Tombol Pending [F8]
+            _btnPending = MakeFooterBtn("⏸  Pending  [F8]", (s, e) => TogglePending());
+            _btnPending.Width = 155;
+
+            flow.Controls.Add(btnCariBarang);
+            flow.Controls.Add(new Panel { Width = 6, Height = 36, BackColor = Color.Transparent });
+            flow.Controls.Add(btnReprint);
+            flow.Controls.Add(new Panel { Width = 6, Height = 36, BackColor = Color.Transparent });
+            flow.Controls.Add(_btnPending);
+            flow.Controls.Add(new Panel { Width = 6, Height = 36, BackColor = Color.Transparent });
+            flow.Controls.Add(btnTutupKasir);
+
+            pnl.Controls.Add(flow);
+            return pnl;
         }
 
         // ── Panel Kiri ────────────────────────────────────────────────────
@@ -187,14 +234,8 @@ namespace simPOS.POS.Forms
             pnlBarcode.Controls.Add(txtBarcode);
             pnlBarcode.Controls.Add(lblBarcodeTitle);
 
-
-
             // Spacer
             var spacer = new Panel { Dock = DockStyle.Top, Height = 8, BackColor = Color.Transparent };
-
-            
-
-
 
             // Cart (Fill)
             var pnlCart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
@@ -276,10 +317,6 @@ namespace simPOS.POS.Forms
 
             dgvCart.SelectionChanged += DgvCart_SelectionChanged;
             dgvCart.CellClick += DgvCart_CellClick;
-
-            
-
-
 
             pnlCart.Controls.Add(dgvCart);
             pnlCart.Controls.Add(lblCartEmpty);
@@ -634,25 +671,32 @@ namespace simPOS.POS.Forms
 
         private void ShowSessionClosed()
         {
-            // Blokir semua input
-            txtBarcode.Enabled = false;
-            btnBayar.Enabled = false;
+            // Blokir input jika sudah ter-init
+            if (txtBarcode != null) txtBarcode.Enabled = false;
+            if (btnBayar != null) btnBayar.Enabled = false;
 
-            // Tampilkan overlay penutupan
+            // Overlay menutupi seluruh form (pakai Bounds form, bukan Dock)
+            // sehingga pnlFooter pun tertutup
             var overlay = new Panel
             {
-                Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(200, 44, 62, 80),
-                Visible = true
+                BackColor = Color.FromArgb(220, 44, 62, 80),
+                Bounds = this.ClientRectangle,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom |
+                            AnchorStyles.Left | AnchorStyles.Right
             };
+
+            // Update bounds saat form di-resize
+            this.Resize += (s, e) => overlay.Bounds = this.ClientRectangle;
+
             var lblMsg = new Label
             {
-                Text = "🔒  Kasir Sudah Ditutup Tidak ada transaksi baru hari ini. Sampai jumpa besok!",
+                Text = "🔒  Kasir Sudah Ditutup" +                             "Tidak ada transaksi baru hari ini." +                             "Sampai jumpa besok!",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 16f, FontStyle.Bold),
                 ForeColor = Color.White,
                 TextAlign = ContentAlignment.MiddleCenter
             };
+
             overlay.Controls.Add(lblMsg);
             this.Controls.Add(overlay);
             overlay.BringToFront();
@@ -863,15 +907,6 @@ namespace simPOS.POS.Forms
         // EVENTS
         // ══════════════════════════════════════════════════════════════════
 
-        private void BtnMenuClerk_Click(object sender, EventArgs e)
-        {
-            // F9 = Clerk (tutup kasir)
-            if (_clerk.IsSessionOpen())
-                ShowClerkForm();
-            else
-                MessageBox.Show("Kasir sudah ditutup.", "Info",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
         private void TxtBarcode_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
@@ -922,8 +957,6 @@ namespace simPOS.POS.Forms
             if (clicked != null) SetKeypadMode(clicked);
         }
 
-        
-
         private void FormPOS_KeyDown(object sender, KeyEventArgs e)
         {
             switch (e.KeyCode)
@@ -939,6 +972,14 @@ namespace simPOS.POS.Forms
                     // F2 = popup semua produk
                     ShowAllProductPickerPopup();
                     e.Handled = true;
+                    break;
+
+                case Keys.F3:
+                    ShowReprint();
+                    break;
+
+                case Keys.F8:
+                    TogglePending();
                     break;
 
                 case Keys.F9:
@@ -1064,5 +1105,120 @@ namespace simPOS.POS.Forms
             e.Graphics.DrawRectangle(new Pen(Color.FromArgb(218, 220, 224)),
                 0, 0, p.Width - 1, p.Height - 1);
         }
+
+        // ════════════════════════════════════════════════════════════════
+        // REPRINT STRUK  [F3]
+        // ════════════════════════════════════════════════════════════════
+
+        private void ShowReprint()
+        {
+            var form = new FormReprint(_lastInvoiceNo);
+            form.ShowDialog(this);
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // PENDING TRANSAKSI  [F8]
+        // Aturan:
+        //  - Hanya 1 pending diperbolehkan
+        //  - Pending: simpan cart, kosongkan keranjang, ubah tombol
+        //  - Unpending: kembalikan cart, hanya jika keranjang kosong
+        // ════════════════════════════════════════════════════════════════
+
+        private void TogglePending()
+        {
+            bool hasPending = _pendingCart != null;
+            bool cartEmpty = _cart.Count == 0;
+
+            if (!hasPending)
+            {
+                // ── PENDING ──────────────────────────────────────────
+                if (_cart.Count == 0)
+                {
+                    MessageBox.Show(
+                        "Keranjang kosong, tidak ada transaksi yang bisa di-pending.",
+                        "Pending", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Simpan salinan cart ke pending
+                _pendingCart = new List<TransactionItem>(_cart.Select(i => new TransactionItem
+                {
+                    ProductId = i.ProductId,
+                    ProductCode = i.ProductCode,
+                    ProductName = i.ProductName,
+                    Unit = i.Unit,
+                    Quantity = i.Quantity,
+                    SellPrice = i.SellPrice
+                }));
+
+                // Kosongkan keranjang aktif
+                _cart.Clear();
+                _selectedItem = null;
+                RefreshCart();
+
+                // Update tombol — tampilkan indikator pending aktif
+                _btnPending.Text = "▶  Unpending  [F8]";
+                _btnPending.BackColor = Color.FromArgb(255, 243, 205);   // kuning muda
+                _btnPending.ForeColor = Color.FromArgb(133, 100, 4);
+                _btnPending.FlatAppearance.BorderColor = Color.FromArgb(240, 200, 80);
+
+                ShowToast("✅ Transaksi di-pending. Keranjang dikosongkan.");
+            }
+            else
+            {
+                // ── UNPENDING ─────────────────────────────────────────
+                if (_cart.Count > 0)
+                {
+                    MessageBox.Show(                        "Keranjang belanja masih berisi item." +                        "Selesaikan atau kosongkan transaksi aktif terlebih dahulu sebelum mengambil kembali transaksi pending.",
+                        "Unpending Ditolak", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Kembalikan cart dari pending
+                _cart.Clear();
+                foreach (var item in _pendingCart)
+                    _cart.Add(item);
+
+                _pendingCart = null;
+                _selectedItem = null;
+                RefreshCart();
+
+                // Kembalikan tampilan tombol ke normal
+                _btnPending.Text = "⏸  Pending  [F8]";
+                _btnPending.BackColor = Color.FromArgb(236, 240, 241);
+                _btnPending.ForeColor = Color.FromArgb(60, 60, 60);
+                _btnPending.FlatAppearance.BorderColor = Color.FromArgb(200, 205, 210);
+
+                ShowToast("↩ Transaksi pending dikembalikan ke keranjang.");
+            }
+        }
+
+        /// Tampilkan notifikasi singkat di bagian bawah form (2 detik)
+        private void ShowToast(string message)
+        {
+            var toast = new Label
+            {
+                Text = "  " + message,
+                Dock = DockStyle.Bottom,
+                Height = 30,
+                BackColor = Color.FromArgb(44, 62, 80),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9f),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            this.Controls.Add(toast);
+            toast.BringToFront();
+
+            var t = new System.Windows.Forms.Timer { Interval = 2000 };
+            t.Tick += (s, e) =>
+            {
+                t.Stop();
+                if (this.Controls.Contains(toast))
+                    this.Controls.Remove(toast);
+                t.Dispose();
+            };
+            t.Start();
+        }
+
     }
 }
