@@ -1,4 +1,5 @@
-﻿using simPOS.Shared.Models;
+﻿using simPOS.Shared.Database;
+using simPOS.Shared.Models;
 using simPOS.Shared.Repositories;
 using System;
 using System.Collections.Generic;
@@ -57,6 +58,65 @@ namespace simPOS.Shared.Services
             {
                 return (false, $"Gagal menyimpan transaksi: {ex.Message}");
             }
+        }
+
+        /// Ambil nomor invoice terakhir yang tersimpan di DB
+        public string GetLastInvoiceNo()
+        {
+            using var conn = DatabaseHelper.GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT invoice_no FROM transactions ORDER BY id DESC LIMIT 1";
+            var result = cmd.ExecuteScalar();
+            return result?.ToString() ?? "";
+        }
+
+        /// Ambil transaksi lengkap beserta items berdasarkan nomor invoice
+        public Transaction GetByInvoiceNo(string invoiceNo)
+        {
+            using var conn = DatabaseHelper.GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT id, invoice_no, total_amount, paid_amount, change_amount,
+                       payment_method, notes, created_at
+                FROM transactions WHERE invoice_no = @inv";
+            cmd.Parameters.AddWithValue("@inv", invoiceNo.Trim());
+
+            Transaction trx = null;
+            using (var r = cmd.ExecuteReader())
+            {
+                if (!r.Read()) return null;
+                trx = new Transaction
+                {
+                    Id = r.GetInt32(0),
+                    InvoiceNo = r.GetString(1),
+                    TotalAmount = r.GetDecimal(2),
+                    PaidAmount = r.GetDecimal(3),
+                    ChangeAmount = r.GetDecimal(4),
+                    PaymentMethod = r.IsDBNull(5) ? "CASH" : r.GetString(5),
+                    Notes = r.IsDBNull(6) ? "" : r.GetString(6),
+                    CreatedAt = r.IsDBNull(7) ? "" : r.GetString(7),
+                    Items = new System.Collections.Generic.List<TransactionItem>()
+                };
+            }
+
+            using var cmd2 = conn.CreateCommand();
+            cmd2.CommandText = @"
+                SELECT product_id, product_code, product_name, unit, quantity, sell_price
+                FROM transaction_items WHERE transaction_id = @tid";
+            cmd2.Parameters.AddWithValue("@tid", trx.Id);
+            using var r2 = cmd2.ExecuteReader();
+            while (r2.Read())
+                trx.Items.Add(new TransactionItem
+                {
+                    ProductId = r2.GetInt32(0),
+                    ProductCode = r2.IsDBNull(1) ? "" : r2.GetString(1),
+                    ProductName = r2.GetString(2),
+                    Unit = r2.IsDBNull(3) ? "" : r2.GetString(3),
+                    Quantity = r2.GetInt32(4),
+                    SellPrice = r2.GetDecimal(5)
+                });
+
+            return trx;
         }
 
         public string GenerateInvoiceNo()
