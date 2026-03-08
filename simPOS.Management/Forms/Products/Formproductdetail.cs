@@ -12,7 +12,12 @@ using simPOS.Shared.Services;
 
 namespace simPOS.Management.Forms.Products
 {
-    public partial class FormProductDetail : Form
+    /// <summary>
+    /// Form tambah / edit barang.
+    /// productId = 0  → mode Tambah
+    /// productId > 0  → mode Edit
+    /// </summary>
+    public class FormProductDetail : Form
     {
         private readonly int _productId;
         private readonly ProductService _productService = new ProductService();
@@ -34,6 +39,8 @@ namespace simPOS.Management.Forms.Products
         private Button btnSave;
         private Button btnCancel;
         private Button btnGenerateCode;
+        private TextBox txtBarcode;
+        private Button btnPrintLabel;
 
         public FormProductDetail(int productId)
         {
@@ -89,6 +96,27 @@ namespace simPOS.Management.Forms.Products
             codePanel.Controls.Add(txtCode);
             codePanel.Controls.Add(btnGenerateCode);
             panel.Controls.Add(codePanel, 1, row++);
+
+            // Barcode (opsional — jika kosong, pakai Kode)
+            AddLabel(panel, "Barcode", row);
+            var barcodePanel = new Panel { Dock = DockStyle.Fill };
+            txtBarcode = new TextBox { Dock = DockStyle.Fill, Font = new Font("Consolas", 10f), PlaceholderText = "Kosongkan = pakai Kode Barang" };
+            var btnGenBarcode = new Button
+            {
+                Text = "⟳",
+                Width = 30,
+                Dock = DockStyle.Right,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 10f),
+                //ToolTipText = "Generate barcode acak"
+            };
+            btnGenBarcode.FlatAppearance.BorderSize = 0;
+            btnGenBarcode.Click += (s, e) =>
+                txtBarcode.Text = DateTime.Now.ToString("yyMMddHHmmss") + new Random().Next(10, 99);
+            barcodePanel.Controls.Add(txtBarcode);
+            barcodePanel.Controls.Add(btnGenBarcode);
+            panel.Controls.Add(barcodePanel, 1, row++);
 
             // Nama Barang
             AddLabel(panel, "Nama Barang *", row);
@@ -179,6 +207,29 @@ namespace simPOS.Management.Forms.Products
             btnPanel.Controls.Add(btnSave);
             btnPanel.Controls.Add(btnCancel);
 
+            btnPrintLabel = new Button
+            {
+                Text = "🏷 Cetak Label",
+                Width = 110,
+                Height = 32,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(52, 152, 219),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Enabled = _productId > 0   // hanya aktif saat edit
+            };
+            btnPrintLabel.FlatAppearance.BorderSize = 0;
+            btnPrintLabel.Click += (s, e) =>
+            {
+                var repo = new simPOS.Shared.Repositories.ProductRepository();
+                var product = repo.GetById(_productId);
+                if (product == null) return;
+                var form = new FormPrintLabel(new[] { product });
+                form.ShowDialog(this);
+            };
+            btnPanel.Controls.Add(btnPrintLabel);
+
             this.Controls.Add(panel);
             this.Controls.Add(btnPanel);
         }
@@ -244,10 +295,11 @@ namespace simPOS.Management.Forms.Products
             txtStock.Text = product.Stock.ToString();
             txtMinStock.Text = product.MinStock.ToString();
             chkIsActive.Checked = product.IsActive;
+            txtBarcode.Text = product.Barcode;
 
             // Set ComboBox ke nilai yang sesuai
-            SelectComboByValue<Category>(cmbCategory, product.CategoryId);
-            SelectComboByValue<Supplier>(cmbSupplier, product.SupplierId);
+            //SelectComboByValue(cmbCategory, product.CategoryId);
+            //SelectComboByValue(cmbSupplier, product.SupplierId);
         }
 
         private void SelectComboByValue<T>(ComboBox cmb, int? id) where T : class
@@ -279,7 +331,8 @@ namespace simPOS.Management.Forms.Products
 
             if (success)
             {
-                //MessageBox.Show(message, "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Set DialogResult SEBELUM Close() — agar parent langsung
+                // menerima OK dan reload grid tanpa perlu klik apapun lagi.
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
@@ -338,7 +391,8 @@ namespace simPOS.Management.Forms.Products
                 SellPrice = sellPrice,
                 Stock = stock,
                 MinStock = minStock,
-                IsActive = chkIsActive.Checked
+                IsActive = chkIsActive.Checked,
+                Barcode = txtBarcode.Text.Trim()
             };
 
             return true;

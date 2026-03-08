@@ -12,6 +12,7 @@ namespace simPOS.Shared.Models
         public int? CategoryId { get; set; }
         public int? SupplierId { get; set; }
         public string Code { get; set; } = string.Empty;
+        public string Barcode { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Unit { get; set; } = "pcs";

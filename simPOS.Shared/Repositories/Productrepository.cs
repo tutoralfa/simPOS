@@ -18,6 +18,7 @@ namespace simPOS.Shared.Repositories
                 p.code, p.name, p.description, p.unit,
                 p.buy_price, p.sell_price, p.stock, p.min_stock,
                 p.is_active, p.created_at, p.updated_at,
+                COALESCE(p.barcode,'') AS barcode,
                 COALESCE(c.name, '-') AS category_name,
                 COALESCE(s.name, '-') AS supplier_name
             FROM products p
@@ -101,10 +102,10 @@ namespace simPOS.Shared.Repositories
             cmd.CommandText = @"
                 INSERT INTO products 
                     (category_id, supplier_id, code, name, description, unit,
-                     buy_price, sell_price, stock, min_stock, is_active)
+                     buy_price, sell_price, stock, min_stock, is_active, barcode)
                 VALUES 
                     (@categoryId, @supplierId, @code, @name, @description, @unit,
-                     @buyPrice, @sellPrice, @stock, @minStock, @isActive);
+                     @buyPrice, @sellPrice, @stock, @minStock, @isActive, @barcode);
                 SELECT last_insert_rowid();";
 
             AddParameters(cmd, p);
@@ -128,6 +129,7 @@ namespace simPOS.Shared.Repositories
                     stock       = @stock,
                     min_stock   = @minStock,
                     is_active   = @isActive,
+                    barcode     = @barcode,
                     updated_at  = datetime('now', 'localtime')
                 WHERE id = @id";
 
@@ -173,6 +175,7 @@ namespace simPOS.Shared.Repositories
             cmd.Parameters.AddWithValue("@stock", p.Stock);
             cmd.Parameters.AddWithValue("@minStock", p.MinStock);
             cmd.Parameters.AddWithValue("@isActive", p.IsActive ? 1 : 0);
+            cmd.Parameters.AddWithValue("@barcode", p.Barcode ?? "");
         }
 
         private static Product MapFromReader(SqliteDataReader r) => new Product
@@ -191,8 +194,9 @@ namespace simPOS.Shared.Repositories
             IsActive = r.GetInt32(11) == 1,
             CreatedAt = r.IsDBNull(12) ? "" : r.GetString(12),
             UpdatedAt = r.IsDBNull(13) ? "" : r.GetString(13),
-            CategoryName = r.GetString(14),
-            SupplierName = r.GetString(15)
+            Barcode = r.IsDBNull(14) ? "" : r.GetString(14),
+            CategoryName = r.GetString(15),
+            SupplierName = r.GetString(16)
         };
     }
 }
