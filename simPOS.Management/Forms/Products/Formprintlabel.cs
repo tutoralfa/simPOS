@@ -34,7 +34,8 @@ namespace simPOS.Management.Forms.Products
         // Settings controls
         private NumericUpDown numLabelW, numLabelH, numCols,
                               numFontName, numFontPrice, numBarH,
-                              numMarginH, numMarginV, numFontPriceLarge;
+                              numMarginH, numMarginV, numFontPriceLarge,
+            numGapH, numGapV;                              // [BARU] kontrol gap antar label
         private NumericUpDown numModuleW;  // lebar modul barcode
         private ComboBox cmbBarcodeType;
         private TextBox txtStoreName;
@@ -232,11 +233,14 @@ namespace simPOS.Management.Forms.Products
             numLabelH = MakeNum(10, 100, _settings.LabelHeightMm);
             numCols = MakeNum(1, 10, _settings.Columns);
             numFontName = MakeNum(2, 20, _settings.FontNameSize);
-            numFontPrice = MakeNum(2, 24, _settings.FontPriceSize);
+            //numFontPrice = MakeNum(0, 24, _settings.FontPriceSize);
             numBarH = MakeNum(2, 60, _settings.BarcodeHeightMm);
             numMarginH = MakeNum(0, 20, _settings.MarginHorizontalMm);
             numMarginV = MakeNum(0, 20, _settings.MarginVerticalMm);
-            numFontPriceLarge = MakeNum(2, 36, _settings.FontPriceLargeSize);
+            // [BARU]
+            numGapH = MakeNum(0, 20, _settings.GapHorizontalMm);
+            numGapV = MakeNum(0, 20, _settings.GapVerticalMm);
+            numFontPriceLarge = MakeNum(0, 36, _settings.FontPriceLargeSize);
             numModuleW = new NumericUpDown
             {
                 Minimum = 0,
@@ -271,11 +275,14 @@ namespace simPOS.Management.Forms.Products
             AddRow("Tinggi label (mm):", numLabelH);
             AddRow("Kolom per baris:", numCols);
             AddRow("Font nama (pt):", numFontName);
-            AddRow("Font harga (pt):", numFontPrice);
+            //AddRow("Font harga (pt):", numFontPrice);
             AddRow("Font harga besar (pt):", numFontPriceLarge);
             AddRow("Tinggi barcode (mm):", numBarH);
             AddRow("Margin kiri/kanan (mm):", numMarginH);
             AddRow("Margin atas/bawah (mm):", numMarginV);
+            // [BARU]
+            AddRow("Jarak antar label H (mm):", numGapH);
+            AddRow("Jarak antar label V (mm):", numGapV);
             AddRow("Jenis barcode:", cmbBarcodeType);
             AddRow("Lebar modul barcode (px):", numModuleW);
             AddRow("Nama toko:", txtStoreName);
@@ -284,11 +291,14 @@ namespace simPOS.Management.Forms.Products
             numLabelH.ValueChanged += (s, e) => { _settings.LabelHeightMm = (int)numLabelH.Value; RebuildAndRefresh(); };
             numCols.ValueChanged += (s, e) => { _settings.Columns = (int)numCols.Value; RebuildAndRefresh(); };
             numFontName.ValueChanged += (s, e) => { _settings.FontNameSize = (int)numFontName.Value; Refresh_(); };
-            numFontPrice.ValueChanged += (s, e) => { _settings.FontPriceSize = (int)numFontPrice.Value; Refresh_(); };
+            //numFontPrice.ValueChanged += (s, e) => { _settings.FontPriceSize = (int)numFontPrice.Value; Refresh_(); };
             numFontPriceLarge.ValueChanged += (s, e) => { _settings.FontPriceLargeSize = (int)numFontPriceLarge.Value; Refresh_(); };
             numBarH.ValueChanged += (s, e) => { _settings.BarcodeHeightMm = (int)numBarH.Value; Refresh_(); };
             numMarginH.ValueChanged += (s, e) => { _settings.MarginHorizontalMm = (int)numMarginH.Value; Refresh_(); };
             numMarginV.ValueChanged += (s, e) => { _settings.MarginVerticalMm = (int)numMarginV.Value; Refresh_(); };
+            // [BARU]
+            numGapH.ValueChanged += (s, e) => { _settings.GapHorizontalMm = (int)numGapH.Value; RebuildAndRefresh(); };
+            numGapV.ValueChanged += (s, e) => { _settings.GapVerticalMm = (int)numGapV.Value; RebuildAndRefresh(); };
             numModuleW.ValueChanged += (s, e) => { _settings.BarcodeModuleWidth = (float)numModuleW.Value; Refresh_(); };
             cmbBarcodeType.SelectedIndexChanged += (s, e) =>
             {
@@ -444,7 +454,9 @@ namespace simPOS.Management.Forms.Products
 
             float pageHmm = 297f;
             int labelsPerRow = Math.Max(1, _settings.Columns);
-            int labelsPerCol = Math.Max(1, (int)(pageHmm / _settings.LabelHeightMm));
+            // [DIUBAH] Hitung maks baris dengan memperhitungkan gap vertikal antar label
+            float slotH = _settings.LabelHeightMm + _settings.GapVerticalMm;
+            int labelsPerCol = Math.Max(1, (int)(pageHmm / slotH));
             int perPage = labelsPerRow * labelsPerCol;
 
             for (int i = 0; i < flat.Count; i += perPage)
@@ -495,6 +507,12 @@ namespace simPOS.Management.Forms.Products
 
             float lw = _settings.LabelWidthMm * scale;
             float lh = _settings.LabelHeightMm * scale;
+            // [BARU] gap antar label dalam px (sesuai scale preview)
+            float gapH = _settings.GapHorizontalMm * scale;
+            float gapV = _settings.GapVerticalMm * scale;
+            // Jarak satu "slot" = ukuran label + gap
+            float slotW = lw + gapH;
+            float slotH = lh + gapV;
             int col = 0, row = 0;
             int cols = _settings.Columns;
 
@@ -502,8 +520,9 @@ namespace simPOS.Management.Forms.Products
 
             foreach (var item in _pages[_previewPage])
             {
-                float lx = ox + col * lw;
-                float ly = oy + row * lh;
+                // [DIUBAH] posisi pakai slotW/slotH agar ada jarak antar label
+                float lx = ox + col * slotW;
+                float ly = oy + row * slotH;
                 DrawLabel(g, item, new RectangleF(lx, ly, lw, lh), scale);
 
                 using var pen = new Pen(Color.FromArgb(190, 210, 220)) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot };
@@ -554,18 +573,18 @@ namespace simPOS.Management.Forms.Products
             }
 
             // Harga — dua baris: kecil (font normal) + besar (font harga besar)
-            using (var fSmall = new Font("Segoe UI", Math.Max(4f, _settings.FontPriceSize * scale)))
+            /*using (var fSmall = new Font("Segoe UI", Math.Max(4f, _settings.FontPriceSize * scale)))
             {
                 float hs = fSmall.GetHeight(g);
                 g.DrawString("Harga Jual", fSmall, Brushes.Gray, new RectangleF(x, y, inner, hs), sfC);
                 y += hs;
-            }
+            }*/
 
             using (var fBig = new Font("Segoe UI", Math.Max(5f, _settings.FontPriceLargeSize * scale), FontStyle.Bold))
             {
                 float hb = fBig.GetHeight(g) + 2f;
                 g.DrawString($"Rp {item.Product.SellPrice:N0}", fBig,
-                    new SolidBrush(Color.FromArgb(39, 120, 70)),
+                    Brushes.Black,
                     new RectangleF(x, y, inner, hb), sfC);
             }
         }
@@ -594,14 +613,24 @@ namespace simPOS.Management.Forms.Products
                 int col = 0, row = 0;
                 int cols = _settings.Columns;
 
+                // [BARU] Ukuran label dan gap dalam px (96dpi)
+                float lw = _settings.LabelWidthMm * scale;
+                float lh = _settings.LabelHeightMm * scale;
+                float gapHpx = _settings.GapHorizontalMm * scale;
+                float gapVpx = _settings.GapVerticalMm * scale;
+                // Slot = ukuran label + gap ke label berikutnya
+                float slotW = lw + gapHpx;
+                float slotH = lh + gapVpx;
+
+                float offX = pe.MarginBounds.Left;
+                float offY = pe.MarginBounds.Top;
+
                 foreach (var item in _pages[pageIndex])
                 {
-                    float lx = pe.MarginBounds.Left + col * _settings.LabelWidthMm * scale;
-                    float ly = pe.MarginBounds.Top + row * _settings.LabelHeightMm * scale;
-                    // Saat print 96dpi → scale moduleW agar konsisten dengan preview
-                    DrawLabel(pe.Graphics, item,
-                        new RectangleF(lx, ly, _settings.LabelWidthMm * scale, _settings.LabelHeightMm * scale),
-                        scale);
+                    // [DIUBAH] posisi pakai slot agar ada jarak antar label
+                    float lx = offX + col * slotW;
+                    float ly = offY + row * slotH;
+                    DrawLabel(pe.Graphics, item, new RectangleF(lx, ly, lw, lh), scale);
                     col++;
                     if (col >= cols) { col = 0; row++; }
                 }
@@ -688,17 +717,20 @@ namespace simPOS.Management.Forms.Products
 
     public class LabelSettings
     {
-        public int LabelWidthMm { get; set; } = 40;
+        public int LabelWidthMm { get; set; } = 50;
         public int LabelHeightMm { get; set; } = 25;
-        public int Columns { get; set; } = 5;
+        public int Columns { get; set; } = 4;
         public int FontNameSize { get; set; } = 3;
-        public int FontPriceSize { get; set; } = 3;
-        public int BarcodeHeightMm { get; set; } = 13;
-        public BarcodeType BarcodeType { get; set; } = BarcodeType.Code128;
+        //public int FontPriceSize { get; set; } = 0;
+        public int BarcodeHeightMm { get; set; } = 15;
+        public BarcodeType BarcodeType { get; set; } = BarcodeType.EAN13;
         public float BarcodeModuleWidth { get; set; } = 0f;  // 0 = auto, >0 = px per modul
         public int MarginHorizontalMm { get; set; } = 2;   // margin kiri & kanan dalam label
         public int MarginVerticalMm { get; set; } = 2;   // margin atas & bawah dalam label
-        public int FontPriceLargeSize { get; set; } = 3;  // ukuran font harga besar (bold)
+        // [BARU] Jarak antar label (gap/spasi antara satu label dan label sebelahnya)
+        public int GapHorizontalMm { get; set; } = 2;   // jarak horizontal antar label
+        public int GapVerticalMm { get; set; } = 10;   // jarak vertikal antar label
+        public int FontPriceLargeSize { get; set; } = 4;  // ukuran font harga besar (bold)
         public bool ShowStoreName { get; set; } = false;
         public string StoreName { get; set; } = "simPOS";
         public static LabelSettings Default => new LabelSettings();
