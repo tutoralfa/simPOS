@@ -83,13 +83,18 @@ namespace simPOS.Management.Forms.Eod
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
                 SplitterWidth = 6,
-                Panel1MinSize = 400,
-                Panel2MinSize = 260
+                Panel1MinSize = 100,
+                Panel2MinSize = 100
             };
-            this.Load += (s, e) =>
+            split.SplitterMoved += (s, e) => { };   // dummy agar tidak crash
+            split.ClientSizeChanged += (s, e) =>
             {
-                if (split.Width > 10)
-                    split.SplitterDistance = (int)(split.Width * 0.60);
+                int minTotal = split.Panel1MinSize + split.Panel2MinSize + split.SplitterWidth;
+                if (split.Width <= minTotal) return;
+                int target = (int)(split.Width * 0.60);
+                int max = split.Width - split.Panel2MinSize - split.SplitterWidth;
+                int min = split.Panel1MinSize;
+                split.SplitterDistance = Math.Max(min, Math.Min(max, target));
             };
 
             // Panel kiri: summary cards + grid items

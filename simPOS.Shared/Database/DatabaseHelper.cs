@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -105,6 +106,8 @@ namespace simPOS.Shared.Database
                     total_hpp    REAL    NOT NULL DEFAULT 0,
                     total_laba   REAL    NOT NULL DEFAULT 0
                 )");
+
+            AddColumnIfNotExists(conn, "products", "barcode", "TEXT NOT NULL DEFAULT ''");
 
             AddColumnIfNotExists(conn, "stock_movements", "receipt_id",
                 "INTEGER REFERENCES goods_receipts(id) ON DELETE SET NULL");

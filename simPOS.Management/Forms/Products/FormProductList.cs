@@ -1,4 +1,9 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.EMMA;
+//using iTextSharp.text;
+using simPOS.Shared.Models;
+using simPOS.Shared.Repositories;
+using simPOS.Shared.Services;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -7,13 +12,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using simPOS.Shared.Models;
-using simPOS.Shared.Repositories;
-using simPOS.Shared.Services;
 
 namespace simPOS.Management.Forms.Products
 {
-    public partial class FormProductList : Form
+    /// <summary>
+    /// Form utama manajemen barang.
+    /// Menampilkan daftar produk, pencarian, dan aksi CRUD.
+    /// </summary>
+    public class FormProductList : Form
     {
         // ── Services ────────────────────────────────────────────────────
         private readonly ProductService _productService = new ProductService();
@@ -27,6 +33,7 @@ namespace simPOS.Management.Forms.Products
         private Button btnReset;
         private Button btnTambah;
         private Button btnEdit;
+        private Button btnCetakLabel;
         private Button btnHapus;
         private DataGridView dgv;
         private Label lblTotal;
@@ -47,7 +54,7 @@ namespace simPOS.Management.Forms.Products
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.WhiteSmoke;
 
-            
+            // ⚠ Urutan PENTING: Fill → Bottom → Top
             BuildGrid();
             BuildStatusBar();
             BuildToolbar();
@@ -145,7 +152,7 @@ namespace simPOS.Management.Forms.Products
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             btnTambah.FlatAppearance.BorderSize = 0;
-            btnTambah.Location = new Point(panel.Width - 330, 12);
+            btnTambah.Location = new Point(panel.Width - 450, 12);
             btnTambah.Click += BtnTambah_Click;
 
             btnEdit = new Button
@@ -161,7 +168,7 @@ namespace simPOS.Management.Forms.Products
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             btnEdit.FlatAppearance.BorderSize = 0;
-            btnEdit.Location = new Point(panel.Width - 220, 12);
+            btnEdit.Location = new Point(panel.Width - 340, 12);
             btnEdit.Click += BtnEdit_Click;
 
             btnHapus = new Button
@@ -177,15 +184,31 @@ namespace simPOS.Management.Forms.Products
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             btnHapus.FlatAppearance.BorderSize = 0;
-            btnHapus.Location = new Point(panel.Width - 120, 12);
+            btnHapus.Location = new Point(panel.Width - 230, 12);
             btnHapus.Click += BtnHapus_Click;
+
+            btnCetakLabel = new Button
+            {
+                Text = "🏷 Cetak Label",
+                Width = 100,
+                Height = 30,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(52, 152, 219),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9f),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnCetakLabel.FlatAppearance.BorderSize = 0;
+            btnCetakLabel.Location = new Point(panel.Width - 120, 12);
+            btnCetakLabel.Click += BtnCetakLabel_Click;
 
             panel.Controls.AddRange(new Control[]
             {
                 lblSearch, txtSearch,
                 lblCat, cmbCategory,
                 btnSearch, btnReset,
-                btnTambah, btnEdit, btnHapus
+                btnTambah, btnEdit, btnHapus, btnCetakLabel
             });
 
             this.Controls.Add(panel);
@@ -206,7 +229,7 @@ namespace simPOS.Management.Forms.Products
                 BorderStyle = BorderStyle.None,
                 RowHeadersVisible = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                Font = new Font("Segoe UI", 9f),
+                Font = new System.Drawing.Font("Segoe UI", 9f),
                 ColumnHeadersHeight = 35
             };
 
@@ -242,7 +265,7 @@ namespace simPOS.Management.Forms.Products
             foreach (var col in new[] { "colId", "colBuyPrice", "colSellPrice", "colStock" })
                 dgv.Columns[col].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
-            dgv.Columns["colCode"].DefaultCellStyle.Font = new Font("Consolas", 9f);
+            dgv.Columns["colCode"].DefaultCellStyle.Font = new System.Drawing.Font("Consolas", 9f);
 
             this.Controls.Add(dgv);
         }
@@ -255,7 +278,7 @@ namespace simPOS.Management.Forms.Products
                 Height = 28,
                 BackColor = Color.FromArgb(44, 62, 80),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9f),
+                Font = new System.Drawing.Font("Segoe UI", 9f),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(10, 0, 0, 0)
             };
@@ -304,7 +327,7 @@ namespace simPOS.Management.Forms.Products
                 if (p.IsLowStock)
                 {
                     dgv.Rows[rowIdx].Cells["colStock"].Style.ForeColor = Color.Red;
-                    dgv.Rows[rowIdx].Cells["colStock"].Style.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+                    dgv.Rows[rowIdx].Cells["colStock"].Style.Font = new System.Drawing.Font("Segoe UI", 9f, FontStyle.Bold);
                 }
 
                 // Simpan Id di tag untuk akses mudah
@@ -381,6 +404,38 @@ namespace simPOS.Management.Forms.Products
             var form = new FormProductDetail(productId: id);
             if (form.ShowDialog() == DialogResult.OK)
                 LoadProducts();
+        }
+        private void BtnCetakLabel_Click(object sender, EventArgs e)
+        {
+            // Ambil semua baris yang diselect, atau semua jika tidak ada yang diselect
+            var repo = new ProductRepository();
+            var selected = new System.Collections.Generic.List<Product>();
+
+            foreach (DataGridViewRow row in dgv.SelectedRows)
+            {
+                if (row.Tag is Product p) selected.Add(p);
+            }
+
+            if (selected.Count == 0)
+            {
+                // Tidak ada yang dipilih — tanya apakah cetak semua
+                var ans = MessageBox.Show(
+                    "Tidak ada barang yang dipilih. Cetak label untuk SEMUA barang yang ditampilkan ? ",
+                    "Pilih Barang", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (ans != DialogResult.Yes) return;
+
+                foreach (DataGridViewRow row in dgv.Rows)
+                    if (row.Tag is Product p) selected.Add(p);
+            }
+
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Tidak ada barang.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var form = new FormPrintLabel(selected);
+            form.ShowDialog(this);
         }
     }
 }
