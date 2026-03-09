@@ -213,10 +213,10 @@ namespace simPOS.Management.Forms.Products
             {
                 Text = "⚙  Pengaturan Label",
                 Dock = DockStyle.Top,
-                Height = 26,
+                Height = 32,
                 Font = new Font("Segoe UI", 9f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(44, 62, 80),
-                Padding = new Padding(0, 8, 0, 0)
+                Padding = new Padding(0, 10, 0, 0)
             };
 
             var tbl = new TableLayoutPanel
