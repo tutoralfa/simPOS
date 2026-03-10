@@ -9,6 +9,7 @@ using System.Drawing.Printing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace simPOS.Management.Forms.Eod
@@ -83,13 +84,18 @@ namespace simPOS.Management.Forms.Eod
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
                 SplitterWidth = 6,
-                Panel1MinSize = 400,
-                Panel2MinSize = 260
+                Panel1MinSize = 100,
+                Panel2MinSize = 100
             };
-            this.Load += (s, e) =>
+            split.SplitterMoved += (s, e) => { };   // dummy agar tidak crash
+            split.ClientSizeChanged += (s, e) =>
             {
-                if (split.Width > 10)
-                    split.SplitterDistance = (int)(split.Width * 0.60);
+                int minTotal = split.Panel1MinSize + split.Panel2MinSize + split.SplitterWidth;
+                if (split.Width <= minTotal) return;
+                int target = (int)(split.Width * 0.60);
+                int max = split.Width - split.Panel2MinSize - split.SplitterWidth;
+                int min = split.Panel1MinSize;
+                split.SplitterDistance = Math.Max(min, Math.Min(max, target));
             };
 
             // Panel kiri: summary cards + grid items
@@ -246,6 +252,7 @@ namespace simPOS.Management.Forms.Eod
                 TextAlign = HorizontalAlignment.Right,
                 Text = "0"
             };
+            txtPhysical.Click += (s, e) => txtPhysical.SelectAll();
             txtPhysical.TextChanged += (s, e) => UpdateDifference();
             txtPhysical.KeyPress += (s, e) =>
             {
@@ -382,19 +389,12 @@ namespace simPOS.Management.Forms.Eod
                 ? "🟢 Kasir: BUKA"
                 : "🔴 Kasir: TUTUP";
 
+            // [DIUBAH] Tidak ada gate di sini — form selalu bisa dibuka
+            // Validasi isOpen / eodDone dipindah ke BtnSave_Click
             if (eodDone)
             {
                 lblSessionStatus.Text = "✅ EOD sudah selesai";
                 lblSessionStatus.ForeColor = Color.FromArgb(100, 230, 130);
-                btnSave.Enabled = false;
-                btnSave.Text = "✅ EOD Sudah Dilakukan";
-                btnSave.BackColor = Color.FromArgb(100, 130, 100);
-            }
-            else if (isOpen)
-            {
-                btnSave.Enabled = false;
-                btnSave.BackColor = Color.FromArgb(120, 120, 120);
-                btnSave.Text = "⛔  Tutup kasir di POS dulu";
             }
 
             // Load summary
@@ -408,7 +408,7 @@ namespace simPOS.Management.Forms.Eod
 
             // Kas
             lblSystemCash.Text = $"Uang Sistem (omzet):   Rp {_summary.TotalOmzet:N0}";
-            txtPhysical.Text = ((long)_summary.TotalOmzet).ToString();
+            //txtPhysical.Text = ((long)_summary.TotalOmzet).ToString();
             UpdateDifference();
 
             // Grid items
@@ -477,6 +477,27 @@ namespace simPOS.Management.Forms.Eod
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
+            // [DIUBAH] Validasi saat tombol ditekan ──────────────────
+            bool eodDone = _clerk.IsEodDone();
+
+            if (eodDone)
+            {
+                MessageBox.Show(
+                    "EOD hari ini sudah pernah dilakukan dan tidak dapat diulang.",
+                    "EOD Sudah Selesai", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // [BARU] Tidak bisa EOD jika belum ada transaksi hari ini
+            if (_summary == null || _summary.TotalTrx == 0)
+            {
+                MessageBox.Show(
+                    "Belum ada transaksi hari ini.\nEOD hanya bisa dilakukan jika sudah ada penjualan.",
+                    "Tidak Ada Transaksi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            // ─────────────────────────────────────────────────────────
+
             if (!decimal.TryParse(txtPhysical.Text.Trim(), out decimal physical))
             {
                 MessageBox.Show("Masukkan jumlah uang fisik yang valid.", "Validasi",
@@ -515,6 +536,10 @@ namespace simPOS.Management.Forms.Eod
 
                 // Reload untuk update status
                 LoadData();
+                // [DIUBAH] Setelah EOD sukses, disable tombol dengan tampilan selesai
+                btnSave.Text = "✅ EOD Sudah Dilakukan";
+                btnSave.BackColor = Color.FromArgb(100, 130, 100);
+                btnSave.Enabled = false;
             }
             catch (Exception ex)
             {
