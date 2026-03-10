@@ -124,9 +124,9 @@ namespace simPOS.Management.Forms.Dashboard
             _body = body; // simpan referensi, isi saat Load
 
             // ── Auto refresh setiap 5 menit ───────────────────────
-            _autoRefresh = new System.Windows.Forms.Timer { Interval = 5 * 60 * 1000 };
-            _autoRefresh.Tick += (s, e) => RefreshAll();
-            _autoRefresh.Start();
+            //_autoRefresh = new System.Windows.Forms.Timer { Interval = 5 * 60 * 1000 };
+            //_autoRefresh.Tick += (s, e) => RefreshAll();
+            //_autoRefresh.Start();
 
             // ⚠ Fill dulu
             this.Controls.Add(body);

@@ -304,7 +304,7 @@ namespace simPOS.Management
         }
         private void OpenEod()
         {
-            var clerk = new ClerkService();
+            /*var clerk = new ClerkService();
             if (clerk.IsSessionOpen())
             {
                 MessageBox.Show(
@@ -313,7 +313,7 @@ namespace simPOS.Management
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
                 return;
-            }
+            }*/
             OpenPage(new FormEod(), btnEod);
         }
     }

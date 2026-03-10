@@ -226,8 +226,8 @@ namespace simPOS.Management.Forms.Products
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52f));
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58f));
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42f));
 
             numLabelW = MakeNum(20, 200, _settings.LabelWidthMm);
             numLabelH = MakeNum(10, 100, _settings.LabelHeightMm);
@@ -286,6 +286,7 @@ namespace simPOS.Management.Forms.Products
             AddRow("Jenis barcode:", cmbBarcodeType);
             AddRow("Lebar modul barcode (px):", numModuleW);
             AddRow("Nama toko:", txtStoreName);
+            AddRow("", chkStoreName);
 
             numLabelW.ValueChanged += (s, e) => { _settings.LabelWidthMm = (int)numLabelW.Value; RebuildAndRefresh(); };
             numLabelH.ValueChanged += (s, e) => { _settings.LabelHeightMm = (int)numLabelH.Value; RebuildAndRefresh(); };
@@ -322,14 +323,15 @@ namespace simPOS.Management.Forms.Products
             var sp2 = new Panel { Dock = DockStyle.Top, Height = 4, BackColor = Color.Transparent };
 
             pnl.Controls.Add(pnlPrint);
-            pnl.Controls.Add(chkStoreName);
             pnl.Controls.Add(tbl);
+            //nl.Controls.Add(chkStoreName);
             pnl.Controls.Add(titleS);
             pnl.Controls.Add(sp2);
             pnl.Controls.Add(pnlQBtns);
             pnl.Controls.Add(dgvQueue);
             pnl.Controls.Add(sp1);
             pnl.Controls.Add(titleQ);
+            //pnl.Controls.Add(chkStoreName);
             return pnl;
         }
 
@@ -637,6 +639,35 @@ namespace simPOS.Management.Forms.Products
 
                 pageIndex++;
                 pe.HasMorePages = pageIndex < _pages.Count;
+            };
+
+            // [DIUBAH] Hook BeginPrint: tampilkan PrintDialog saat tombol Print di preview diklik
+            bool printerSelected = false; // flag agar dialog muncul sekali per sesi print
+
+            doc.BeginPrint += (s2, pe2) =>
+            {
+                // Hanya tampilkan dialog saat pertama kali (bukan saat render preview)
+                if (!printerSelected)
+                {
+                    // [BARU] Tampilkan PrintDialog untuk pilih printer
+                    using var pd = new PrintDialog
+                    {
+                        Document = doc,
+                        UseEXDialog = false,   // gunakan dialog modern Windows
+                        AllowSomePages = false,
+                        AllowSelection = false,
+                    };
+
+                    if (pd.ShowDialog() != DialogResult.OK)
+                    {
+                        // User batal → batalkan print
+                        pe2.Cancel = true;
+                        return;
+                    }
+                    printerSelected = true;
+                    // PrinterSettings sudah diset oleh PrintDialog ke doc.PrinterSettings
+                }
+                pageIndex = 0; // reset halaman
             };
 
             using var preview = new PrintPreviewDialog
