@@ -60,9 +60,10 @@ namespace simPOS.Management.Forms.Settings
                 Padding = new Point(16, 6)
             };
 
+            _tabs.TabPages.Add(BuildCsvTab());
             _tabs.TabPages.Add(BuildPrinterTab());
             _tabs.TabPages.Add(BuildDatabaseTab());
-            _tabs.TabPages.Add(BuildCsvTab());
+            
 
             this.Controls.Add(_tabs);
             this.Controls.Add(header);
@@ -74,7 +75,7 @@ namespace simPOS.Management.Forms.Settings
 
         private TabPage BuildPrinterTab()
         {
-            var tab = new TabPage("🖨  Printer Struk")
+            var tab = new TabPage("🖨  Printer")
             {
                 BackColor = Color.White,
                 Padding = new Padding(0)
@@ -128,91 +129,109 @@ namespace simPOS.Management.Forms.Settings
             return tab;
         }
 
+        // [DIUBAH] BuildCsvPanel — satu TableLayoutPanel, tidak ada DockStyle.Top bertumpuk
         private Panel BuildCsvPanel()
         {
-            var root = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16) };
+            // Root wrapper dengan status bar di bawah
+            var root = new Panel { Dock = DockStyle.Fill };
 
-            // ── Export section ────────────────────────────────────
-            var pnlExport = MakeSection("📤  Export Data Barang ke CSV");
+            // Status bar — paling bawah
+            _lblCsvStatus = new Label
+            {
+                Name = "lblCsvStatus",
+                Dock = DockStyle.Bottom,
+                Height = 26,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Italic),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(8, 0, 0, 0),
+                BackColor = Color.FromArgb(245, 245, 245)
+            };
+
+            // TableLayoutPanel: 4 baris tetap + 1 baris fill (tabel format kolom)
+            // Baris 0: Export     (tinggi tetap)
+            // Baris 1: Import     (tinggi tetap)
+            // Baris 2: Format CSV (fill sisa ruang)
+            var tbl = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                BackColor = Color.FromArgb(245, 246, 250),
+                Padding = new Padding(16, 12, 16, 8),
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.None
+            };
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 148f));  // Export
+            tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 510f));  // Import
+            tbl.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));  // Format CSV
+
+            // ── Baris 0: Export ───────────────────────────────────
+            var pnlExport = MakeSectionFlat("📤  Export Data Barang ke CSV");
 
             var lblExportInfo = new Label
             {
-                Text = "Export seluruh data barang (kode, nama, harga, stok, kategori, supplier) ke file CSV.\n" +
-                             "File CSV bisa dibuka di Microsoft Excel atau Google Sheets.",
-                Dock = DockStyle.Top,
-                Height = 44,
+                Text = "Export seluruh data barang ke file CSV. Bisa dibuka di Excel / Google Sheets.",
+                Location = new Point(8, 32),
+                Size = new Size(600, 20),
                 Font = new Font("Segoe UI", 8.5f),
-                ForeColor = Color.FromArgb(80, 80, 80),
-                Padding = new Padding(2, 4, 0, 0)
+                ForeColor = Color.FromArgb(80, 80, 80)
             };
-
-            var pnlExportBtns = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = Color.Transparent };
 
             var btnExport = MakeBtn("📤  Export Sekarang", Color.FromArgb(39, 174, 96), 180);
             var btnTemplate = MakeBtn("📋  Unduh Template", Color.FromArgb(52, 152, 219), 170);
-
-            btnExport.Location = new Point(0, 4);
-            btnTemplate.Location = new Point(188, 4);
-
+            btnExport.Location = new Point(8, 60);
+            btnTemplate.Location = new Point(196, 60);
             btnExport.Click += BtnExport_Click;
             btnTemplate.Click += BtnTemplate_Click;
 
-            pnlExportBtns.Controls.AddRange(new Control[] { btnExport, btnTemplate });
+            pnlExport.Controls.AddRange(new Control[] { lblExportInfo, btnExport, btnTemplate });
+            tbl.Controls.Add(pnlExport, 0, 0);
 
-            pnlExport.Controls.Add(pnlExportBtns);
-            pnlExport.Controls.Add(lblExportInfo);
-
-            // ── Import section ────────────────────────────────────
-            var pnlImport = MakeSection("📥  Import Data Barang dari CSV");
+            // ── Baris 1: Import ───────────────────────────────────
+            var pnlImport = MakeSectionFlat("📥  Import Data Barang dari CSV");
 
             var lblImportInfo = new Label
             {
-                Text = "Import barang dari file CSV. Gunakan template di atas sebagai panduan format kolom.\n" +
-                             "Kategori & Supplier yang belum ada akan dibuat otomatis.",
-                Dock = DockStyle.Top,
-                Height = 44,
+                Text = "Import barang dari file CSV. Kategori & Supplier yang belum ada akan dibuat otomatis.",
+                Location = new Point(8, 32),
+                Size = new Size(600, 20),
                 Font = new Font("Segoe UI", 8.5f),
-                ForeColor = Color.FromArgb(80, 80, 80),
-                Padding = new Padding(2, 4, 0, 0)
+                ForeColor = Color.FromArgb(80, 80, 80)
             };
-
-            // Mode import
-            var pnlMode = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent };
 
             var rbInsert = new RadioButton
             {
                 Text = "Tambah Baru Saja — skip barang yang kodenya sudah ada",
-                Location = new Point(2, 4),
-                Size = new Size(460, 22),
+                Location = new Point(10, 60),
+                Size = new Size(500, 20),
                 Font = new Font("Segoe UI", 8.5f),
                 Checked = true
             };
             var rbUpsert = new RadioButton
             {
                 Text = "Tambah & Update — barang yang kodenya sudah ada akan di-update",
-                Location = new Point(2, 30),
-                Size = new Size(460, 22),
+                Location = new Point(10, 84),
+                Size = new Size(500, 20),
                 Font = new Font("Segoe UI", 8.5f),
                 ForeColor = Color.FromArgb(150, 80, 0)
             };
-            pnlMode.Controls.AddRange(new Control[] { rbInsert, rbUpsert });
 
-            var pnlImportBtns = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = Color.Transparent };
             var btnImport = MakeBtn("📥  Pilih File & Import", Color.FromArgb(142, 68, 173), 200);
-            btnImport.Location = new Point(0, 4);
+            btnImport.Location = new Point(8, 112);
             btnImport.Click += (s, e) => BtnImport_Click(rbUpsert.Checked);
-            pnlImportBtns.Controls.Add(btnImport);
 
-            pnlImport.Controls.Add(pnlImportBtns);
-            pnlImport.Controls.Add(pnlMode);
-            pnlImport.Controls.Add(lblImportInfo);
+            pnlImport.Controls.AddRange(new Control[] { lblImportInfo, rbInsert, rbUpsert, btnImport });
+            tbl.Controls.Add(pnlImport, 0, 1);
 
-            // ── Format CSV info ───────────────────────────────────
-            var pnlFormat = MakeSection("📋  Format Kolom CSV");
+            // ── Baris 2: Format Kolom CSV ─────────────────────────
+            var pnlFormat = MakeSectionFlat("📋  Format Kolom CSV");
+            pnlFormat.Padding = new Padding(0);
 
             var dgvCols = new DataGridView
             {
-                Dock = DockStyle.Fill,
+                Location = new Point(0, 28),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -225,6 +244,14 @@ namespace simPOS.Management.Forms.Settings
                 RowTemplate = { Height = 24 },
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect
             };
+            // Atur size via SizeChanged agar fill parent
+            pnlFormat.SizeChanged += (s, e) =>
+            {
+                dgvCols.Size = new Size(
+                    pnlFormat.ClientSize.Width,
+                    Math.Max(10, pnlFormat.ClientSize.Height - 30));
+            };
+
             dgvCols.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(44, 62, 80);
             dgvCols.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
             dgvCols.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
@@ -244,13 +271,12 @@ namespace simPOS.Management.Forms.Settings
                 ("Satuan",      "Satuan barang",                                 "kg / pcs",  ""),
                 ("Kategori",    "Nama kategori (buat otomatis jika belum ada)",  "Sembako",   ""),
                 ("Supplier",    "Nama supplier (buat otomatis jika belum ada)",  "CV Maju",   ""),
-                ("HargaBeli",   "Harga beli / HPP (angka, tanpa titik/koma)",   "10000",     "✅"),
-                ("HargaJual",   "Harga jual (angka, tanpa titik/koma)",          "15000",     "✅"),
+                ("HargaBeli",   "Harga beli / HPP (angka, tanpa titik/koma)",    "10000",     "✅"),
+                ("HargaJual",   "Harga jual (angka, tanpa titik/koma)",           "15000",     "✅"),
                 ("Stok",        "Jumlah stok awal",                              "100",       ""),
                 ("StokMinimum", "Batas stok minimum untuk alert",                "10",        ""),
                 ("Aktif",       "1 = aktif, 0 = nonaktif",                       "1",         ""),
             };
-
             foreach (var (col, ket, contoh, wajib) in colInfo)
             {
                 var idx = dgvCols.Rows.Add(col, ket, contoh, wajib);
@@ -260,28 +286,44 @@ namespace simPOS.Management.Forms.Settings
             dgvCols.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
 
             pnlFormat.Controls.Add(dgvCols);
+            tbl.Controls.Add(pnlFormat, 0, 2);
 
-            // Status bar bawah
-            var lblStatus = new Label
-            {
-                Name = "lblCsvStatus",
-                Dock = DockStyle.Bottom,
-                Height = 26,
-                Font = new Font("Segoe UI", 8.5f, FontStyle.Italic),
-                ForeColor = Color.FromArgb(100, 100, 100),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(4, 0, 0, 0),
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-            // Simpan ref ke status bar agar bisa diakses dari event
-            _lblCsvStatus = lblStatus;
-
-            // Susun layout — urutan Controls.Add = bawah ke atas (karena DockStyle.Top)
-            root.Controls.Add(pnlFormat);
-            root.Controls.Add(pnlImport);
-            root.Controls.Add(pnlExport);
-            root.Controls.Add(lblStatus);
+            root.Controls.Add(tbl);
+            root.Controls.Add(_lblCsvStatus);
             return root;
+        }
+
+        // [BARU] MakeSection tanpa DockStyle — pakai absolute positioning di dalam TableLayout
+        private static Panel MakeSectionFlat(string title)
+        {
+            var pnl = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                Padding = new Padding(0)
+            };
+
+            var lblTitle = new Label
+            {
+                Text = title,
+                Location = new Point(0, 0),
+                Height = 28,
+                Dock = DockStyle.Top,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(44, 62, 80),
+                BackColor = Color.FromArgb(245, 248, 250),
+                Padding = new Padding(8, 0, 0, 0),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnl.Controls.Add(lblTitle);
+
+            pnl.Paint += (s, e) =>
+            {
+                var p = s as Panel;
+                e.Graphics.DrawLine(new Pen(Color.FromArgb(218, 220, 224)),
+                    0, p.Height - 1, p.Width, p.Height - 1);
+            };
+            return pnl;
         }
 
         // Status label ref (diakses oleh event handler)
