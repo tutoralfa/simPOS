@@ -313,9 +313,9 @@ namespace simPOS.Management
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
                 return;
-            }*/
+            }
             OpenPage(new FormEod(), btnEod);
-        }*/
+        }
 
         private void CheckMissingEod()
         {

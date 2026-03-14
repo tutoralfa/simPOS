@@ -95,7 +95,7 @@ namespace simPOS.Management.Forms.Eod
                 Panel1MinSize = 100,
                 Panel2MinSize = 100
             };
-<<<<<<< HEAD
+//<<<<<<< HEAD
             split.SplitterMoved += (s, e) => { };   // dummy agar tidak crash
             split.ClientSizeChanged += (s, e) =>
             {
@@ -106,7 +106,7 @@ namespace simPOS.Management.Forms.Eod
                 int min = split.Panel1MinSize;
                 split.SplitterDistance = Math.Max(min, Math.Min(max, target));
             };
-=======
+//=======
             // [DIUBAH] Child form tidak fire Shown — pakai Load + BeginInvoke
             // BeginInvoke memastikan form sudah punya ukuran nyata sebelum set splitter
             void SetSplitter()
@@ -121,7 +121,7 @@ namespace simPOS.Management.Forms.Eod
             }
             this.Load += (s, e) => this.BeginInvoke(new Action(SetSplitter));
             this.Resize += (s, e) => SetSplitter();
->>>>>>> eod-clerk-validation-date
+//>>>>>>> eod-clerk-validation-date
 
             // Panel kiri: summary cards + grid items
             split.Panel1.Controls.Add(BuildLeftPanel());
@@ -503,13 +503,13 @@ namespace simPOS.Management.Forms.Eod
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
-<<<<<<< HEAD
+//<<<<<<< HEAD
             // [DIUBAH] Validasi saat tombol ditekan ──────────────────
-            bool eodDone = _clerk.IsEodDone();
-=======
+            //bool eodDone = _clerk.IsEodDone();
+//=======
             // [DIUBAH] Validasi pakai _targetDate
             bool eodDone = _clerk.IsEodDoneForDate(_targetDate);
->>>>>>> eod-clerk-validation-date
+//>>>>>>> eod-clerk-validation-date
 
             if (eodDone)
             {
