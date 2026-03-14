@@ -304,7 +304,42 @@ namespace simPOS.Management
         }
         private void OpenEod()
         {
+<<<<<<< HEAD
             /*var clerk = new ClerkService();
+=======
+            var clerk = new ClerkService();
+            string yesterday = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+
+            // [DIUBAH] Cek langsung IsEodDoneForDate untuk kemarin
+            // GetMissingEodDates cari tanggal yang ada transaksi tapi belum EOD
+            bool yesterdayMissing = clerk.GetMissingEodDates().Contains(yesterday);
+
+            if (yesterdayMissing)
+            {
+                var ydt = DateTime.Today.AddDays(-1);
+                var answer = MessageBox.Show(
+                    $"EOD tanggal {ydt:dd MMMM yyyy} belum diselesaikan." +
+                    "Lakukan EOD untuk tanggal tersebut sekarang?",
+                    "EOD Kemarin Belum Selesai",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button1);
+
+                if (answer == DialogResult.Yes)
+                    OpenPage(new FormEod(yesterday), btnEod);
+
+                // [DIUBAH] return di luar if — selalu kembali jika kemarin missing
+                // agar tidak langsung buka FormEod hari ini
+                return;
+            }
+
+            OpenPage(new FormEod(), btnEod);
+        }
+
+        /*private void OpenEod()
+        {
+            var clerk = new ClerkService();
+>>>>>>> eod-clerk-validation-date
             if (clerk.IsSessionOpen())
             {
                 MessageBox.Show(
@@ -315,6 +350,29 @@ namespace simPOS.Management
                 return;
             }*/
             OpenPage(new FormEod(), btnEod);
+        }*/
+
+        private void CheckMissingEod()
+        {
+            var clerk = new ClerkService();
+            var missing = clerk.GetMissingEodDates();
+            if (missing.Count == 0) return;
+
+            // Format daftar tanggal yang belum EOD
+            var lines = missing.Select(d =>
+            {
+                if (DateTime.TryParse(d, out var dt))
+                    return $"  • {dt:dd MMMM yyyy}";
+                return $"  • {d}";
+            });
+
+            string dateList = string.Join("", lines);
+            MessageBox.Show(
+                $"⚠  Ditemukan {missing.Count} hari yang belum di-EOD:" + $"{dateList}" + "Harap selesaikan EOD untuk tanggal-tanggal tersebut" +
+                "melalui menu EOD sebelum melanjutkan.",
+                "EOD Belum Selesai",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
         }
     }
 }

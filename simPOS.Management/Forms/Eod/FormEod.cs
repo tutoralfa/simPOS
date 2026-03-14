@@ -37,8 +37,15 @@ namespace simPOS.Management.Forms.Eod
         private Button btnSave, btnPrint;
         private Label lblSessionStatus;
 
-        public FormEod()
+        // [BARU] Tanggal target EOD — null = hari ini, string = tanggal spesifik
+        private readonly string _targetDate;
+
+        public FormEod() : this(null) { }
+
+        // [BARU] Constructor untuk EOD tanggal tertentu (misal kemarin)
+        public FormEod(string targetDate)
         {
+            _targetDate = targetDate ?? DateTime.Today.ToString("yyyy-MM-dd");
             InitializeComponent();
             this.Load += (s, e) => LoadData();
         }
@@ -59,7 +66,8 @@ namespace simPOS.Management.Forms.Eod
             var header = new Panel { Dock = DockStyle.Top, Height = 56, BackColor = Color.FromArgb(44, 62, 80) };
             header.Controls.Add(new Label
             {
-                Text = $"📋  End of Day  —  {DateTime.Today:dddd, dd MMMM yyyy}",
+                // [DIUBAH] Judul mengikuti _targetDate
+                Text = $"📋  End of Day  —  {(DateTime.TryParse(_targetDate, out var _td) ? _td : DateTime.Today):dddd, dd MMMM yyyy}",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 12f, FontStyle.Bold),
                 ForeColor = Color.White,
@@ -87,6 +95,7 @@ namespace simPOS.Management.Forms.Eod
                 Panel1MinSize = 100,
                 Panel2MinSize = 100
             };
+<<<<<<< HEAD
             split.SplitterMoved += (s, e) => { };   // dummy agar tidak crash
             split.ClientSizeChanged += (s, e) =>
             {
@@ -97,6 +106,22 @@ namespace simPOS.Management.Forms.Eod
                 int min = split.Panel1MinSize;
                 split.SplitterDistance = Math.Max(min, Math.Min(max, target));
             };
+=======
+            // [DIUBAH] Child form tidak fire Shown — pakai Load + BeginInvoke
+            // BeginInvoke memastikan form sudah punya ukuran nyata sebelum set splitter
+            void SetSplitter()
+            {
+                int minTotal = split.Panel1MinSize + split.Panel2MinSize + split.SplitterWidth;
+                if (split.Width <= minTotal) return;
+                int max = split.Width - split.Panel2MinSize - split.SplitterWidth;
+                int min = split.Panel1MinSize;
+                if (max <= min) return;
+                int target = (int)(split.Width * 0.60);
+                split.SplitterDistance = Math.Max(min, Math.Min(max, target));
+            }
+            this.Load += (s, e) => this.BeginInvoke(new Action(SetSplitter));
+            this.Resize += (s, e) => SetSplitter();
+>>>>>>> eod-clerk-validation-date
 
             // Panel kiri: summary cards + grid items
             split.Panel1.Controls.Add(BuildLeftPanel());
@@ -380,10 +405,11 @@ namespace simPOS.Management.Forms.Eod
 
         private void LoadData()
         {
-            // Cek status sesi
-            var session = _clerk.GetTodaySession();
+            // [DIUBAH] Gunakan _targetDate
+            bool isToday = _targetDate == DateTime.Today.ToString("yyyy-MM-dd");
+            var session = isToday ? _clerk.GetTodaySession() : null;
             bool isOpen = session?.IsOpen == true;
-            bool eodDone = _clerk.IsEodDone();
+            bool eodDone = _clerk.IsEodDoneForDate(_targetDate);
 
             lblSessionStatus.Text = isOpen
                 ? "🟢 Kasir: BUKA"
@@ -397,8 +423,8 @@ namespace simPOS.Management.Forms.Eod
                 lblSessionStatus.ForeColor = Color.FromArgb(100, 230, 130);
             }
 
-            // Load summary
-            _summary = _eodSvc.GetTodaySummary();
+            // [DIUBAH] Load summary untuk _targetDate
+            _summary = _eodSvc.GetSummaryByDate(_targetDate);
 
             // Summary cards
             lblTrx.Text = _summary.TotalTrx.ToString("N0");
@@ -477,8 +503,13 @@ namespace simPOS.Management.Forms.Eod
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
+<<<<<<< HEAD
             // [DIUBAH] Validasi saat tombol ditekan ──────────────────
             bool eodDone = _clerk.IsEodDone();
+=======
+            // [DIUBAH] Validasi pakai _targetDate
+            bool eodDone = _clerk.IsEodDoneForDate(_targetDate);
+>>>>>>> eod-clerk-validation-date
 
             if (eodDone)
             {
