@@ -63,8 +63,9 @@ namespace simPOS.POS.Forms
             this.KeyDown += FormPOS_KeyDown;
             this.Load += (s, e) => EnsureAndCheckSession();
 
-            BuildHeader();
+
             BuildBody();
+            BuildHeader();
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -734,7 +735,7 @@ namespace simPOS.POS.Forms
 
             var lblMsg = new Label
             {
-                Text = "🔒  Kasir Sudah Ditutup" +                             "Tidak ada transaksi baru hari ini." +                             "Sampai jumpa besok!",
+                Text = "🔒  Kasir Sudah Ditutup" + "Tidak ada transaksi baru hari ini." +"Sampai jumpa besok!",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 16f, FontStyle.Bold),
                 ForeColor = Color.White,
@@ -1232,7 +1233,7 @@ namespace simPOS.POS.Forms
                 if (_cart.Count > 0)
                 {
                     MessageBox.Show(
-                        "Keranjang belanja masih berisi item." +  "Selesaikan atau kosongkan transaksi aktif terlebih dahulu sebelum mengambil kembali transaksi pending.",
+                        "Keranjang belanja masih berisi item." +                        "Selesaikan atau kosongkan transaksi aktif terlebih dahulu sebelum mengambil kembali transaksi pending.",
                         "Unpending Ditolak", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }

@@ -44,9 +44,13 @@ namespace simPOS.Shared.Services
         /// <summary>
         /// Ambil ringkasan penjualan hari ini untuk preview EOD.
         /// </summary>
-        public EodSummary GetTodaySummary()
+        // [BARU] Versi dengan tanggal eksplisit — dipakai oleh FormEod(date)
+        public EodSummary GetSummaryByDate(string date) => GetSummaryInternal(date);
+        public EodSummary GetTodaySummary() => GetSummaryInternal(DateTime.Today.ToString("yyyy-MM-dd"));
+
+        private EodSummary GetSummaryInternal(string date)
         {
-            var today = DateTime.Today.ToString("yyyy-MM-dd");
+            var today = date;
             var summary = new EodSummary { SessionDate = today };
 
             using var conn = DatabaseHelper.GetConnection();

@@ -36,8 +36,15 @@ namespace simPOS.Management.Forms.Eod
         private Button btnSave, btnPrint;
         private Label lblSessionStatus;
 
-        public FormEod()
+        // [BARU] Tanggal target EOD — null = hari ini, string = tanggal spesifik
+        private readonly string _targetDate;
+
+        public FormEod() : this(null) { }
+
+        // [BARU] Constructor untuk EOD tanggal tertentu (misal kemarin)
+        public FormEod(string targetDate)
         {
+            _targetDate = targetDate ?? DateTime.Today.ToString("yyyy-MM-dd");
             InitializeComponent();
             this.Load += (s, e) => LoadData();
         }
@@ -58,7 +65,8 @@ namespace simPOS.Management.Forms.Eod
             var header = new Panel { Dock = DockStyle.Top, Height = 56, BackColor = Color.FromArgb(44, 62, 80) };
             header.Controls.Add(new Label
             {
-                Text = $"📋  End of Day  —  {DateTime.Today:dddd, dd MMMM yyyy}",
+                // [DIUBAH] Judul mengikuti _targetDate
+                Text = $"📋  End of Day  —  {(DateTime.TryParse(_targetDate, out var _td) ? _td : DateTime.Today):dddd, dd MMMM yyyy}",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 12f, FontStyle.Bold),
                 ForeColor = Color.White,
@@ -83,14 +91,23 @@ namespace simPOS.Management.Forms.Eod
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
                 SplitterWidth = 6,
-                Panel1MinSize = 400,
-                Panel2MinSize = 260
+                Panel1MinSize = 100,
+                Panel2MinSize = 100
             };
-            this.Load += (s, e) =>
+            // [DIUBAH] Child form tidak fire Shown — pakai Load + BeginInvoke
+            // BeginInvoke memastikan form sudah punya ukuran nyata sebelum set splitter
+            void SetSplitter()
             {
-                if (split.Width > 10)
-                    split.SplitterDistance = (int)(split.Width * 0.60);
-            };
+                int minTotal = split.Panel1MinSize + split.Panel2MinSize + split.SplitterWidth;
+                if (split.Width <= minTotal) return;
+                int max = split.Width - split.Panel2MinSize - split.SplitterWidth;
+                int min = split.Panel1MinSize;
+                if (max <= min) return;
+                int target = (int)(split.Width * 0.60);
+                split.SplitterDistance = Math.Max(min, Math.Min(max, target));
+            }
+            this.Load += (s, e) => this.BeginInvoke(new Action(SetSplitter));
+            this.Resize += (s, e) => SetSplitter();
 
             // Panel kiri: summary cards + grid items
             split.Panel1.Controls.Add(BuildLeftPanel());
@@ -373,32 +390,26 @@ namespace simPOS.Management.Forms.Eod
 
         private void LoadData()
         {
-            // Cek status sesi
-            var session = _clerk.GetTodaySession();
+            // [DIUBAH] Gunakan _targetDate
+            bool isToday = _targetDate == DateTime.Today.ToString("yyyy-MM-dd");
+            var session = isToday ? _clerk.GetTodaySession() : null;
             bool isOpen = session?.IsOpen == true;
-            bool eodDone = _clerk.IsEodDone();
+            bool eodDone = _clerk.IsEodDoneForDate(_targetDate);
 
             lblSessionStatus.Text = isOpen
                 ? "🟢 Kasir: BUKA"
                 : "🔴 Kasir: TUTUP";
 
+            // [DIUBAH] Tidak ada gate di sini — form selalu bisa dibuka
+            // Validasi isOpen / eodDone dipindah ke BtnSave_Click
             if (eodDone)
             {
                 lblSessionStatus.Text = "✅ EOD sudah selesai";
                 lblSessionStatus.ForeColor = Color.FromArgb(100, 230, 130);
-                btnSave.Enabled = false;
-                btnSave.Text = "✅ EOD Sudah Dilakukan";
-                btnSave.BackColor = Color.FromArgb(100, 130, 100);
-            }
-            else if (isOpen)
-            {
-                btnSave.Enabled = false;
-                btnSave.BackColor = Color.FromArgb(120, 120, 120);
-                btnSave.Text = "⛔  Tutup kasir di POS dulu";
             }
 
-            // Load summary
-            _summary = _eodSvc.GetTodaySummary();
+            // [DIUBAH] Load summary untuk _targetDate
+            _summary = _eodSvc.GetSummaryByDate(_targetDate);
 
             // Summary cards
             lblTrx.Text = _summary.TotalTrx.ToString("N0");
@@ -477,6 +488,27 @@ namespace simPOS.Management.Forms.Eod
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
+            // [DIUBAH] Validasi pakai _targetDate
+            bool eodDone = _clerk.IsEodDoneForDate(_targetDate);
+
+            if (eodDone)
+            {
+                MessageBox.Show(
+                    "EOD hari ini sudah pernah dilakukan dan tidak dapat diulang.",
+                    "EOD Sudah Selesai", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // [BARU] Tidak bisa EOD jika belum ada transaksi hari ini
+            if (_summary == null || _summary.TotalTrx == 0)
+            {
+                MessageBox.Show(
+                    "Belum ada transaksi hari ini.\nEOD hanya bisa dilakukan jika sudah ada penjualan.",
+                    "Tidak Ada Transaksi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            // ─────────────────────────────────────────────────────────
+
             if (!decimal.TryParse(txtPhysical.Text.Trim(), out decimal physical))
             {
                 MessageBox.Show("Masukkan jumlah uang fisik yang valid.", "Validasi",
@@ -515,6 +547,10 @@ namespace simPOS.Management.Forms.Eod
 
                 // Reload untuk update status
                 LoadData();
+                // [DIUBAH] Setelah EOD sukses, disable tombol dengan tampilan selesai
+                btnSave.Text = "✅ EOD Sudah Dilakukan";
+                btnSave.BackColor = Color.FromArgb(100, 130, 100);
+                btnSave.Enabled = false;
             }
             catch (Exception ex)
             {

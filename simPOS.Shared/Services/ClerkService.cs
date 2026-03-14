@@ -138,6 +138,41 @@ namespace simPOS.Shared.Services
             cmd.Parameters.AddWithValue("@date", today);
             cmd.ExecuteNonQuery();
         }
+        // [BARU] Cek EOD untuk tanggal tertentu
+        public bool IsEodDoneForDate(string date)
+        {
+            using var conn = DatabaseHelper.GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM eod_records WHERE session_date = @date";
+            cmd.Parameters.AddWithValue("@date", date);
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
+        // [BARU] Kembalikan daftar tanggal sebelum hari ini yang CLOSED tapi belum EOD
+        // [DIUBAH] Cek berdasarkan transaksi, bukan status sesi
+        // Kemarin dianggap belum EOD jika ada transaksi di hari itu
+        // tapi belum ada row di eod_records untuk tanggal tersebut
+        public List<string> GetMissingEodDates()
+        {
+            using var conn = DatabaseHelper.GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT DISTINCT DATE(t.created_at) AS trx_date
+                FROM   transactions t
+                WHERE  DATE(t.created_at) < DATE('now','localtime')
+                  AND  NOT EXISTS (
+                       SELECT 1 FROM eod_records er
+                       WHERE  er.session_date = DATE(t.created_at))
+                ORDER  BY trx_date ASC";
+
+            var result = new List<string>();
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                result.Add(r.GetString(0));
+            return result;
+        }
+
+        public bool HasMissingEod() => GetMissingEodDates().Count > 0;
     }
 
     public class CashSession
@@ -150,4 +185,5 @@ namespace simPOS.Shared.Services
         public string Notes { get; set; }
         public bool IsOpen => Status == "OPEN";
     }
+
 }
